@@ -2,7 +2,8 @@ import streamlit as st
 
 from database import (
     get_pending_requests,
-    complete_request_items
+    complete_request_items,
+    delete_registration_request
 )
 
 
@@ -134,38 +135,141 @@ def show_work_page():
             st.write("")
 
             # ==============================
-            # 完成按钮
+            # 操作按钮
             # ==============================
 
-            if st.button(
-                "チェックした店舗を登録完了にする",
-                key=f"complete_request_{request['id']}",
-                type="primary"
+            button_col1, button_col2 = st.columns([2, 1])
+
+
+            # ==========================================
+            # 完成按钮
+            # ==========================================
+
+            with button_col1:
+
+                if st.button(
+                    "チェックした店舗を登録完了にする",
+                    key=f"complete_request_{request['id']}",
+                    type="primary",
+                    use_container_width=True
+                ):
+
+                    if not selected_ids:
+
+                        st.warning(
+                            "完了した店舗を選択してください。"
+                        )
+
+                    else:
+
+                        try:
+
+                            complete_request_items(
+                                request["id"],
+                                selected_ids
+                            )
+
+                            st.success(
+                                "登録完了として保存しました。"
+                            )
+
+                            st.rerun()
+
+                        except Exception as e:
+
+                            st.error(
+                                f"保存に失敗しました：{e}"
+                            )
+
+
+            # ==========================================
+            # 删除按钮
+            # ==========================================
+
+            with button_col2:
+
+                if st.button(
+                    "🗑️ 依頼を削除",
+                    key=f"delete_request_{request['id']}",
+                    use_container_width=True
+                ):
+
+                    st.session_state[
+                        f"confirm_delete_{request['id']}"
+                    ] = True
+
+
+            # ==========================================
+            # 删除确认
+            # ==========================================
+
+            confirm_key = (
+                f"confirm_delete_{request['id']}"
+            )
+
+            if st.session_state.get(
+                confirm_key,
+                False
             ):
 
-                if not selected_ids:
+                st.warning(
+                    f"JAN：{jan}\n\n"
+                    "この登録依頼を削除しますか？"
+                )
 
-                    st.warning(
-                        "完了した店舗を選択してください。"
-                    )
+                confirm_col1, confirm_col2 = (
+                    st.columns(2)
+                )
 
-                else:
 
-                    try:
+                # 真正删除
+                with confirm_col1:
 
-                        complete_request_items(
-                            request["id"],
-                            selected_ids
-                        )
+                    if st.button(
+                        "削除する",
+                        key=f"confirm_yes_{request['id']}",
+                        type="primary",
+                        use_container_width=True
+                    ):
 
-                        st.success(
-                            "登録完了として保存しました。"
-                        )
+                        try:
+
+                            delete_registration_request(
+                                request["id"]
+                            )
+
+                            st.session_state[
+                                confirm_key
+                            ] = False
+
+                            st.success(
+                                "登録依頼を削除しました。"
+                            )
+
+                            st.rerun()
+
+                        except ValueError as e:
+
+                            st.error(str(e))
+
+                        except Exception as e:
+
+                            st.error(
+                                f"削除に失敗しました：{e}"
+                            )
+
+
+                # 取消
+                with confirm_col2:
+
+                    if st.button(
+                        "キャンセル",
+                        key=f"confirm_no_{request['id']}",
+                        use_container_width=True
+                    ):
+
+                        st.session_state[
+                            confirm_key
+                        ] = False
 
                         st.rerun()
-
-                    except Exception as e:
-
-                        st.error(
-                            f"保存に失敗しました：{e}"
-                        )
