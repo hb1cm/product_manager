@@ -293,3 +293,198 @@ def get_registration_history(
     result = query.execute()
 
     return result.data
+
+def delete_registration_request(request_id):
+    """
+    删除尚未开始处理的登録依頼。
+
+    如果该 JAN：
+    1. 没有其他 request
+    2. 没有 registrations 历史
+
+    则连 products 中的 JAN 一起删除。
+    """
+
+    supabase = get_supabase()
+
+    # ==========================================
+    # 1. 找到这个 request 对应的 product
+    # ==========================================
+
+    request_result = (
+        supabase
+        .table("requests")
+        .select("id, product_id")
+        .eq("id", request_id)
+        .execute()
+    )
+
+    if not request_result.data:
+        raise ValueError(
+            "登録依頼が見つかりません。"
+        )
+
+    product_id = (
+        request_result.data[0]["product_id"]
+    )
+
+    # ==========================================
+    # 2. 检查有没有店铺已经完成
+    # ==========================================
+
+    items_result = (
+        supabase
+        .table("request_items")
+        .select("id, completed")
+        .eq("request_id", request_id)
+        .execute()
+    )
+
+    has_completed = any(
+        item["completed"]
+        for item in items_result.data
+    )
+
+    if has_completed:
+        raise ValueError(
+            "すでに登録完了の店舗があるため削除できません。"
+        )
+
+    # ==========================================
+    # 3. 删除 request
+    # request_items 会自动 cascade 删除
+    # ==========================================
+
+    (
+        supabase
+        .table("requests")
+        .delete()
+        .eq("id", request_id)
+        .execute()
+    )
+
+    # ==========================================
+    # 4. 检查这个 JAN 有没有其他 request
+    # ==========================================
+
+    other_requests = (
+        supabase
+        .table("requests")
+        .select("id")
+        .eq("product_id", product_id)
+        .execute()
+    )
+
+    # ==========================================
+    # 5. 检查这个 JAN 有没有正式登录履历
+    # ==========================================
+
+    registrations = (
+        supabase
+        .table("registrations")
+        .select("id")
+        .eq("product_id", product_id)
+        .execute()
+    )
+
+    # ==========================================
+    # 6. 什么都没有，就把 product 也删掉
+    # ==========================================
+
+    if (
+        not other_requests.data
+        and not registrations.data
+    ):
+
+        (
+            supabase
+            .table("products")
+            .delete()
+            .eq("id", product_id)
+            .execute()
+        )
+
+def delete_registration_request(request_id):
+    """
+    删除尚未开始处理的登録依頼。
+    如果该 JAN 没有其他请求，也没有正式登录记录，
+    则连 products 中的 JAN 一起删除。
+    """
+
+    supabase = get_supabase()
+
+    # 找到 request
+    request_result = (
+        supabase
+        .table("requests")
+        .select("id, product_id")
+        .eq("id", request_id)
+        .execute()
+    )
+
+    if not request_result.data:
+        raise ValueError(
+            "登録依頼が見つかりません。"
+        )
+
+    product_id = request_result.data[0]["product_id"]
+
+    # 检查是否已经有完成的店铺
+    items_result = (
+        supabase
+        .table("request_items")
+        .select("id, completed")
+        .eq("request_id", request_id)
+        .execute()
+    )
+
+    has_completed = any(
+        item["completed"]
+        for item in items_result.data
+    )
+
+    if has_completed:
+        raise ValueError(
+            "すでに登録完了の店舗があるため削除できません。"
+        )
+
+    # 删除 request
+    # request_items 会 cascade 自动删除
+    (
+        supabase
+        .table("requests")
+        .delete()
+        .eq("id", request_id)
+        .execute()
+    )
+
+    # 检查是否还有其他 request
+    other_requests = (
+        supabase
+        .table("requests")
+        .select("id")
+        .eq("product_id", product_id)
+        .execute()
+    )
+
+    # 检查是否有正式登录记录
+    registrations = (
+        supabase
+        .table("registrations")
+        .select("id")
+        .eq("product_id", product_id)
+        .execute()
+    )
+
+    # 什么记录都没有就把 product 也删除
+    if (
+        not other_requests.data
+        and not registrations.data
+    ):
+        (
+            supabase
+            .table("products")
+            .delete()
+            .eq("id", product_id)
+            .execute()
+        )
