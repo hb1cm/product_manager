@@ -12,6 +12,17 @@ def show_request_page():
 
     st.subheader("新規登録依頼")
 
+    # 登録成功後にJAN入力欄をリセットするため
+    if "jan_input_version" not in st.session_state:
+        st.session_state["jan_input_version"] = 0
+
+    # 登録成功メッセージ
+    if "request_success_count" in st.session_state:
+        st.success(
+            f"{st.session_state['request_success_count']} 件の登録依頼を追加しました！"
+        )
+        del st.session_state["request_success_count"]
+
     # ==========================================
     # JAN入力
     # ==========================================
@@ -24,7 +35,8 @@ def show_request_page():
             "4904810080626\n"
             "4962886010442"
         ),
-        height=150
+        height=150,
+        key=f"jan_input_{st.session_state['jan_input_version']}"
     )
 
     # JANを整理
@@ -291,14 +303,14 @@ def show_request_page():
 
                 success_jans.append(jan)
 
-            st.success(
-                f"{len(success_jans)} 件の登録依頼を追加しました！"
-            )
+            # 登録成功件数を保存
+            st.session_state["request_success_count"] = len(success_jans)
 
-            if urgent:
-                st.warning(
-                    "🔴 至急商品として登録されました。"
-                )
+            # JAN入力欄をリセット
+            st.session_state["jan_input_version"] += 1
+
+            # ページを再読み込み
+            st.rerun()
 
         except Exception as e:
 
