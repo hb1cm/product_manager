@@ -16,6 +16,15 @@ def show_request_page():
     if "jan_input_version" not in st.session_state:
         st.session_state["jan_input_version"] = 0
 
+    if "shop_input_version" not in st.session_state:
+        st.session_state["shop_input_version"] = 0
+
+    if "memo_input_version" not in st.session_state:
+        st.session_state["memo_input_version"] = 0
+
+    if "urgent_input_version" not in st.session_state:
+        st.session_state["urgent_input_version"] = 0
+
     # 登録成功メッセージ
     if "request_success_count" in st.session_state:
         st.success(
@@ -59,12 +68,14 @@ def show_request_page():
     memo = st.text_area(
         "備考",
         placeholder="必要に応じて備考を入力してください",
-        height=80
+        height=80,
+        key=f"memo_input_{st.session_state['memo_input_version']}"
     )
 
     urgent = st.checkbox(
         "🔴 至急",
-        help="優先的に登録する必要がある商品"
+        help="優先的に登録する必要がある商品",
+        key=f"urgent_input_{st.session_state['urgent_input_version']}"
     )
 
     st.divider()
@@ -99,7 +110,10 @@ def show_request_page():
 
                 selected = st.checkbox(
                     shop["name"],
-                    key=f"shop_{shop['code']}"
+                    key=(
+                        f"shop_{shop['code']}_"
+                        f"{st.session_state['shop_input_version']}"
+                    )
                 )
 
                 if selected:
@@ -303,13 +317,20 @@ def show_request_page():
 
                 success_jans.append(jan)
 
-            # 登録成功件数を保存
             st.session_state["request_success_count"] = len(success_jans)
 
-            # JAN入力欄をリセット
+            # JANをリセット
             st.session_state["jan_input_version"] += 1
 
-            # ページを再読み込み
+            # 店舗チェックをリセット
+            st.session_state["shop_input_version"] += 1
+
+            # 備考をリセット
+            st.session_state["memo_input_version"] += 1
+
+            # 至急をリセット
+            st.session_state["urgent_input_version"] += 1
+
             st.rerun()
 
         except Exception as e:
